@@ -5,4 +5,8 @@
     .hide-on-print {
         display: none;
     }
+    @page{
+        margin-top: .6in;
+        margin-bottom: 0;
+    }
 }
