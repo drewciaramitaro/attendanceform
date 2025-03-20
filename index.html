@@ -2,6 +2,7 @@
 <html>
 
 <head>
+<link rel="stylesheet" href="https://use.typekit.net/ryp8bab.css">
 <link rel="stylesheet" href="record.css?v=2">
 <style id="Copy of AttendanceRecordsNonNYStoresC3360_30955_Styles">
 .font530955
@@ -1215,14 +1216,44 @@
 </head>
 
 <body>
-<fieldset class="hide-on-print">
-	<legend>Upload File</legend>
-	<p>Export a CSV of Employee Summary - Full from UKG, then upload it here.</p>
-	<label>Fiscal Year</label>
-	<input style="width:50px" type="number" min="2025" id="fiscal-year-input" value="2025"/>
-	<input id="file-input" type="file"/><button onclick="window.print()">Print</button>
-</fieldset>
+<div style="display: grid">
+	<!-- ;grid-template-columns: 1fr 35px 1fr;"> -->
+	<fieldset class="hide-on-print">
+		<legend>Load an Employee Summary</legend>
+		<p>Export a CSV of Employee Summary - Full from UKG, then upload it here.</p>
+		<label>Fiscal Year</label>
+		<input style="width:50px" type="number" min="2025" id="fiscal-year-input" value="2025"/>
 
+		<input id="file-input" type="file"/>
+		<label>Select a Teammate</label>
+		<select id="teammate-field">
+			<option value="all">All Teammates</option>
+		</select>
+		<button id="create-sheet">Create Sheet</button>
+		<button id="clear-sheets" onclick="document.querySelector('#print-container').innerHTML = ''">Clear Sheets</button>
+		<button onclick="window.print()">Print</button>
+	</fieldset>
+	<h3 style="text-align: center;display: none;">OR</h3>
+	<fieldset class="hide-on-print" style="display: none;">
+		<legend>Create a Form</legend>
+		<div style="display: grid;grid-template-columns: 1fr 1fr;gap: 20px;">
+			<div style="display: grid;grid-template-columns: 1fr 1fr;">
+				<label>Teammate Name</label> <input/>
+
+				<label>Hire Date</label> <input/>
+
+				<label>Date of Birth</label> <input/>
+			</div>
+			<div style="display: grid;grid-template-columns: 1fr 1fr;">
+				<label>Unique ID</label> <input/>
+
+				<label>Department</label> <input/>
+
+				<label>Manager</label> <input/>
+			</div>
+		</div>
+	</fieldset>
+</div>	
 <template id="record-templ">
 	<div class="print-page" id="Copy of AttendanceRecordsNonNYStoresC3360_30955" align=center
 	x:publishsource="Excel">
@@ -1902,9 +1933,10 @@
 
 <script type="module">
 	import {parse} from './csv.js';
-
+	let all_teammates = [];
 	const fileSel = document.querySelector('#file-input');
 	const print_container = document.querySelector('#print-container')
+	const dropdown = document.querySelector('#teammate-field')
 	fileSel.addEventListener('change', (event) => {
         const file = event.target.files[0];
         var reader = new FileReader();
@@ -1913,71 +1945,94 @@
             var text = evt.target.result;
             
             const parsed = parse(text);
-			parsed.slice(10).forEach(element => {
-				let page = document.querySelector('#record-templ').content.cloneNode(true);
-				const uid = element[0];
-				const name = element[1];
-				const birth = element[2];
-				const doh = element[3];
-				const location = element[4].split('/');
-				const mgr = element[8];
-				const status = element[12];
-
-				const birthDate = new Date(birth);
-				const today = new Date();
-				const age = today.getFullYear() - birthDate.getFullYear();
-				const isMinor = age < 18 || (age === 18 && today.getMonth() <= birthDate.getMonth() && today.getDate() < birthDate.getDate());
-
-				let fy = document.querySelector('#fiscal-year-input').value;
-				page.querySelector('#fiscal').innerHTML = 'FY '+fy
-				page.querySelector('#tm-name').innerHTML = name;
-				page.querySelector('#unique-id').innerHTML = uid;
-				page.querySelector('#tm-dept').innerHTML = `${location[location.length - 3]}/${location[location.length - 2]}`
-				page.querySelector('#tm-doh').innerHTML = doh;
-				page.querySelector('#tm-hiredate-b').innerHTML = doh;
-				page.querySelector('#reports-to').innerHTML = mgr;
-				page.querySelector('#tm-status').innerHTML = status;
-				page.querySelector('#tm-minor').innerHTML = isMinor ? 'YES' : 'NO';
-
-				// Calculate allowed absences and tardies based on hire date
-				const hireDate = new Date(doh);
-				let allowedAbsences = 6; // Default for before May 1st 2025
-				let allowedTardies = 7; // Default for before May 1st 2025
-				
-
-				if (hireDate > new Date(`${fy-1}-04-31`)) {
-					const hireMonth = hireDate.getMonth();
-					const hireYear = hireDate.getFullYear();
-					
-					if (hireYear == fy-1) {
-						if (hireMonth >= 7 && hireMonth <= 9) { // August-October
-							allowedAbsences = 5;
-							allowedTardies = 5;
-						} else if (hireMonth >= 10) { // November-December
-							allowedAbsences = 4;
-							allowedTardies = 3;
-						}
-					} else if (hireYear == fy) {
-						console.log(hireYear, name)
-						if (hireMonth <= 0) { // January
-							allowedAbsences = 4;
-							allowedTardies = 3;
-						} else if (hireMonth >= 1 && hireMonth <= 3) { // February-April
-							allowedAbsences = 2;
-							allowedTardies = 2;
-						}
-					}
-				}
-
-				page.querySelector('#allow-abs').innerHTML = allowedAbsences;
-				page.querySelector('#allow-tar').innerHTML = allowedTardies;
-
-				print_container.appendChild(page);
+			parsed.slice(9).forEach(element => {
+				const tmOption = document.createElement('option');
+				const jsString = JSON.stringify(element)
+				tmOption.value = jsString;
+				all_teammates.push(jsString);
+				tmOption.text = element[1];
+				dropdown.add(tmOption);
 			});
 		}
 	 }
 	 	
 	)
+
+	document.querySelector('#create-sheet').addEventListener('click', function(){
+			const tm_field = document.querySelector('#teammate-field').value;
+
+			if (tm_field == "all"){
+				all_teammates.forEach(element => {
+					create_sheet(element);
+				});
+			}
+			else{
+				create_sheet(document.querySelector('#teammate-field').value)
+			}
+		});
+
+	function create_sheet(js){
+		const element = JSON.parse(js);
+		let page = document.querySelector('#record-templ').content.cloneNode(true);
+		const uid = element[0];
+		const name = element[1];
+		const birth = element[2];
+		const doh = element[3];
+		const location = element[4].split('/');
+		const mgr = element[8];
+		const status = element[12];
+
+		const birthDate = new Date(birth);
+		const today = new Date();
+		const age = today.getFullYear() - birthDate.getFullYear();
+		const isMinor = age < 18 || (age === 18 && today.getMonth() <= birthDate.getMonth() && today.getDate() < birthDate.getDate());
+
+		let fy = document.querySelector('#fiscal-year-input').value;
+		page.querySelector('#fiscal').innerHTML = 'FY '+fy
+		page.querySelector('#tm-name').innerHTML = name;
+		page.querySelector('#unique-id').innerHTML = uid;
+		page.querySelector('#tm-dept').innerHTML = `${location[location.length - 3]}/${location[location.length - 2]}`
+		page.querySelector('#tm-doh').innerHTML = doh;
+		page.querySelector('#tm-hiredate-b').innerHTML = doh;
+		page.querySelector('#reports-to').innerHTML = mgr;
+		page.querySelector('#tm-status').innerHTML = status;
+		page.querySelector('#tm-minor').innerHTML = isMinor ? 'YES' : 'NO';
+
+		// Calculate allowed absences and tardies based on hire date
+		const hireDate = new Date(doh);
+		let allowedAbsences = 6; // Default for before May 1st 2025
+		let allowedTardies = 7; // Default for before May 1st 2025
+		
+
+		if (hireDate > new Date(`${fy-1}-04-31`)) {
+			const hireMonth = hireDate.getMonth();
+			const hireYear = hireDate.getFullYear();
+			
+			if (hireYear == fy-1) {
+				if (hireMonth >= 7 && hireMonth <= 9) { // August-October
+					allowedAbsences = 5;
+					allowedTardies = 5;
+				} else if (hireMonth >= 10) { // November-December
+					allowedAbsences = 4;
+					allowedTardies = 3;
+				}
+			} else if (hireYear == fy) {
+				console.log(hireYear, name)
+				if (hireMonth <= 0) { // January
+					allowedAbsences = 4;
+					allowedTardies = 3;
+				} else if (hireMonth >= 1 && hireMonth <= 3) { // February-April
+					allowedAbsences = 2;
+					allowedTardies = 2;
+				}
+			}
+		}
+
+		page.querySelector('#allow-abs').innerHTML = allowedAbsences;
+		page.querySelector('#allow-tar').innerHTML = allowedTardies;
+
+		print_container.appendChild(page);
+	}
 </script>
 
 </html>
