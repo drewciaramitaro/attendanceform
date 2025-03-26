@@ -1971,6 +1971,12 @@
 			}
 		});
 
+	function calc_dob(dob){
+		var diff = Date.now() - dob.getTime();
+		var dt_diff = new Date(diff);
+		return Math.abs(dt_diff.getUTCFullYear() - 1970);
+	}
+
 	function create_sheet(js){
 		const element = JSON.parse(js);
 		let page = document.querySelector('#record-templ').content.cloneNode(true);
@@ -1983,9 +1989,8 @@
 		const status = element[12];
 
 		const birthDate = new Date(birth);
-		const today = new Date();
-		const age = today.getFullYear() - birthDate.getFullYear();
-		const isMinor = age < 18 || (age === 18 && today.getMonth() <= birthDate.getMonth() && today.getDate() < birthDate.getDate());
+		const age = calc_dob(birthDate);
+		const isMinor = age < 18;
 
 		let fy = document.querySelector('#fiscal-year-input').value;
 		page.querySelector('#fiscal').innerHTML = 'FY '+fy
